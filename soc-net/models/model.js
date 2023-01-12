@@ -32,15 +32,16 @@ const Post = sequelize.define("post", {
 });
 
 const Subscription = sequelize.define("subscription", {
-	email: {
-		type: DataTypes.STRING,
+	followerId: {
+		type: DataTypes.INTEGER,
 		require: true,
 		references: {
 			model: User,
-			key: "email",
+			key: "id",
 		},
 	},
-	followerId: {
+
+	followeeId: {
 		type: DataTypes.INTEGER,
 		require: true,
 		references: {

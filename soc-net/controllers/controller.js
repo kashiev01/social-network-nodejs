@@ -2,23 +2,31 @@ const { Subscription, Post, User } = require("../models/model");
 const { Op } = require("sequelize");
 
 exports.getProfile = (req, res, next) => {
-	const email = req.query.email;
-	console.log(email);
-	User.findAll().then(user => {
-		if (user == false) {
+	const email = req.params.email;
+	User.findOne({
+		where: {
+			email: email,
+		},
+	}).then(user => {
+		console.log(user);
+		if (!user) {
 			User.create({
 				firstName: "John",
 				lastName: "Doe",
-				email: "john.doe@gmail.com",
+				email: email,
 			})
 				.then(result => {
-					res.send("User John Doe was created");
+					res.send(`John Doe with email ${email} was created`);
 				})
 				.catch(err => {
 					console.log(err);
 				});
-		} else if (user) {
-			User.findByPk(1).then(result => {
+		} else {
+			User.findOne({
+				where: {
+					email: email,
+				},
+			}).then(result => {
 				res.send(result);
 			});
 		}
@@ -52,11 +60,9 @@ exports.postPost = (req, res, next) => {
 	const message = req.body.message;
 	console.log(message);
 	Post.create({
-		message: message,
+		message,
+		userId: 1,
 	}).then(result => {
-		Post.hasOne(User, {
-			foreignKey: "userId",
-		});
 		res.send(`A new message was posted: "${message}"`);
 	});
 };
@@ -64,34 +70,53 @@ exports.postPost = (req, res, next) => {
 exports.getPost = (req, res, next) => {
 	const dateTime = req.query.dateTime;
 	if (dateTime) {
-		Post.findAll({
+		Subscription.findAll({
 			where: {
-				createdAt: {
-					[Op.gt]: dateTime,
-					[Op.lt]: new Date(),
+				followerId: 1,
+			},
+		}).then(result => {
+			const ids = result.map(obj => {
+				return obj.followeeId;
+			});
+			Post.findAll({
+				where: {
+					createdAt: {
+						[Op.gt]: dateTime,
+						[Op.lt]: new Date(),
+					},
+					userId: [...ids, 1],
 				},
-			},
-		})
-			.then(result => {
-				res.send(result);
 			})
-			.catch(err => {
-				console.log(err);
-			});
+				.then(result => {
+					res.send(result);
+				})
+				.catch(err => {
+					console.log(err);
+				});
+		});
 	} else {
-		Post.findAll({
-			limit: 20,
-			order: [["createdAt", "DESC"]],
+		Subscription.findAll({
 			where: {
-				userId: 3,
+				followerId: 1,
 			},
-		})
-			.then(posts => {
-				res.send(posts);
-			})
-			.catch(err => {
-				console.log(err);
+		}).then(result => {
+			const ids = result.map(obj => {
+				return obj.followeeId;
 			});
+			Post.findAll({
+				where: {
+					userId: [...ids, 1],
+				},
+				limit: 20,
+				order: [["createdAt", "DESC"]],
+			})
+				.then(posts => {
+					res.send(posts);
+				})
+				.catch(err => {
+					console.log(err);
+				});
+		});
 	}
 };
 
@@ -104,14 +129,13 @@ exports.postSubscribe = (req, res, next) => {
 	})
 		.then(result => {
 			Subscription.create({
-				email,
-				followerId: result.id,
+				followerId: 1,
+				followeeId: result.id,
 			})
 				.then(result => {
-					User.hasMany(Subscription, {
-						foreignKey: "followerId",
-					});
-
+					// Subscription.hasMany(Subscription, {
+					// 	foreignKey: "followeeId",
+					// });
 					res.send(`Subscribed to user ${email}`);
 				})
 				.catch(err => {
@@ -124,9 +148,14 @@ exports.postSubscribe = (req, res, next) => {
 };
 
 exports.getSubscribtions = (req, res, next) => {
-	Subscription.findAll()
+	Subscription.findAll({
+		raw: true,
+		where: {
+			followerId: 1,
+		},
+	})
 		.then(result => {
-			res.send(result[0]);
+			res.send(result);
 		})
 		.catch(err => {
 			console.log(err);

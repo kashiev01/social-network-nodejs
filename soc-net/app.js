@@ -6,7 +6,7 @@ const sequelize = require("./utils/database");
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
-app.use("/blog", routes);
+app.use("/blog/:email", routes);
 
 sequelize
 	.sync()

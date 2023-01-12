@@ -1,6 +1,6 @@
 const express = require("express");
 const controllers = require("../controllers/controller");
-const router = express.Router();
+const router = express.Router({ mergeParams: true });
 
 router.get("/profile", controllers.getProfile);
 router.post("/profile", controllers.editProfile);
